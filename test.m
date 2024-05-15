@@ -26,7 +26,11 @@ label = [zeros(nbr1, 1); ones(nbr2,1)];
 
 % PCA
 
-[y,x_hat,~,~,U_hat] = func_pca(data, 2);
+%[y,x_hat,~,~,U_hat] = func_pca(data', 2);
+[y,x_hat,~,~,U_hat] = func_pca_original(data, 2);
+
+%y = y';
+%x_hat = x_hat';
 
 figure(); hold on;
 scatter(y(:, 1), y(:, 2))
@@ -38,7 +42,7 @@ scatter3(x_hat(:, 1), x_hat(:, 2), x_hat(:, 3))
 title('Principal Component Truncated Reconstruction')
 hold off;
 
-% LDA
+%% LDA
 
 y1_mean = mean( y(1:50, :) );
 y2_mean = mean( y(101:150, :) );
