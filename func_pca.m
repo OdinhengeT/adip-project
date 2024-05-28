@@ -1,4 +1,4 @@
-function [y, x_hat, V, Lambda, V_hat, Lambda_hat] = func_pca(data, nbr_components)
+function [x_hat, M_hat, y_hat, V_hat, Lambda_hat, y, V, Lambda] = func_pca(data, nbr_components)
     
     n = size(data, 1);
     m = size(data, 2);
@@ -7,12 +7,14 @@ function [y, x_hat, V, Lambda, V_hat, Lambda_hat] = func_pca(data, nbr_component
     if nbr_components > m; error("func_pca: input 'nbr_components' must be smaller than dimensionallity of data."); end
     
     data_mean = mean(data, 1);
-    
-    U = data - data_mean; % Or just data?
+    U = data - data_mean;
+   
+    M_hat = mean(U, 2);
+    U = U - M_hat;
     
     % Eigen Decomposition (Trick)
     [Phi, Lambda] = eig(U'*U/m);
-    V = U * Phi * diag( 1./sqrt(m .* diag(Lambda)) ); % norm
+    V = U * Phi * diag( 1./sqrt(m .* diag(Lambda)) ); % normalization
 
     % Flip
     V = flip(V, 2);
@@ -24,6 +26,8 @@ function [y, x_hat, V, Lambda, V_hat, Lambda_hat] = func_pca(data, nbr_component
     
     y = V' * U;
     
-    x_hat = V_hat * y(1:nbr_components, :) + data_mean; 
+    y_hat = y(1:nbr_components, :);
+    
+    x_hat = V_hat * y_hat + M_hat + data_mean; 
     
 end
