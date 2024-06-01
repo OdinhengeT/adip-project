@@ -23,7 +23,8 @@ data_masked=data_masked(mask(:)>0,:);
 
 %% Divide into Modeling and Validation Data
 
-mod_nbr_lab0 = 100; % out of 122
+% 20% Validation Data
+mod_nbr_lab0 = 98; % out of 122
 mod_nbr_lab1 = 48; % out of 60
 
 idx_lab0 = find(labels==0);
@@ -63,7 +64,7 @@ mod_success_rate = sum(mod_res == 0)/length(mod_res)
 
 %% Validation Data
 
-val_y_hat = V_hat' * (val_data - M_hat);
+val_y_hat = V_hat' * (val_data - mean(val_data, 1) - M_hat);
 
 val_labels_classified = func_nn_classifier(q' * val_y_hat, mean_projections, unique(val_labels));
 
