@@ -1,33 +1,62 @@
-function [x_hat, M_hat, y_hat, V_hat, Lambda_hat, y, V, Lambda] = func_pca(data, nbr_components)
-    
-    n = size(data, 1);
-    m = size(data, 2);
+function [...
+    mean_sample, ...
+    P, ... 
+    Lambda, ...
+    principal_components, ...
+    data_reconstructed, ...
+    principal_components_full, ...
+    P_full, ...
+    Lambda_full ...
+    ...
+    ] = func_pca(data, nbr_principal_components, bool_fast)
+    if nargin < 3; bool_fast = false; end
 
-    if nbr_components <= 0 ; error("func_pca: input 'nbr_components' must be greater than zero."); end
-    if nbr_components > m; error("func_pca: input 'nbr_components' must be smaller than dimensionallity of data."); end
+   %n = size(data, 1);  % Number of values per sample
+    m = size(data, 2);  % Number of samples
+
+    if nbr_principal_components <= 0 ; error("func_pca: input 'nbr_components' must be greater than zero."); end
+    if nbr_principal_components > m-1
+        error("func_pca: input 'nbr_components' must be at most one less than the dimensionallity of the data."); 
+    end
     
-    data_mean = mean(data, 1);
-    U = data - data_mean;
+    % Remove the mean value of each sample from each sample (sample_mean)
+    data_sample_mean = mean(data, 1);
+    U = data - data_sample_mean; % U is the sample matrix
    
-    M_hat = mean(U, 2);
-    U = U - M_hat;
+    % Calculate the mean of all samples and remove it from each sample (mean_sample)
+    mean_sample = mean(U, 2);
+    U = U - mean_sample;
     
-    % Eigen Decomposition (Trick)
-    [Phi, Lambda] = eig(U'*U/m);
-    V = U * Phi * diag( 1./sqrt(m .* diag(Lambda)) ); % normalization
+    % Eigen-decomposition (with the trick)
+    [P_full, Lambda_full] = eig(U'*U/m);
+    Lambda_full = diag(Lambda_full);
+    
+    % Normalize eigenvectors
+    P_full = U * P_full * diag( 1./sqrt(m .* Lambda_full) ); 
 
-    % Flip
-    V = flip(V, 2);
-    Lambda = flip(diag(Lambda));
+    % Sort (Matlab gives no guarantees that returned eigenvalues are in a select order)
+    [Lambda_full, ind_sort] = sort(Lambda_full, 'descend');
+    P_full = P_full(:, ind_sort);
     
     % Truncate 
-    V_hat = V(:, 1:nbr_components);
-    Lambda_hat = Lambda(1:nbr_components);
+    P = P_full(:, 1:nbr_principal_components); % Transform from (data - mean_sample) to principal components
+    Lambda = Lambda_full(1:nbr_principal_components);
     
-    y = V' * U;
-    
-    y_hat = y(1:nbr_components, :);
-    
-    x_hat = V_hat * y_hat + M_hat + data_mean; 
-    
+    if bool_fast
+        % Truncated vector of principal components
+        principal_components = P' * U;
+        
+        % Ignore these
+        principal_components_full = NaN;
+        data_reconstructed = NaN;
+    else 
+        % Vector of principal components
+        principal_components_full = P_full' * U;
+
+        % Truncated vector of principal components
+        principal_components = principal_components_full(1:nbr_principal_components, :);
+
+        % Reconstruction of Data
+        data_reconstructed = P * principal_components + mean_sample + data_mean;  
+    end
 end

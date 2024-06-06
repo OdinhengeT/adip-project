@@ -15,11 +15,11 @@ labels = stats.CDR*2;   % get group label: 0 is controls, 1 is MCI patients
 age = stats.Age;
 
 % apply mask, get one matrix with nvoxels x nsubjects
-data_masked=reshape(vol,prod(sz(1:3)),[]);
+data = reshape(vol,prod(sz(1:3)),[]);
 % or run this line for residuals
 %tmp=reshape(resid_vol,prod(sz(1:3)),[]);
 
-data_masked=data_masked(mask(:)>0,:);
+data_masked = data(mask(:),:);
 
 %% Run Cross-Validation for nbr of Principal Components
 
@@ -55,25 +55,24 @@ parfor i = 1:pca_nbr_components_max
         val_labels = labels(val_idx);
         val_data = data_masked(:, val_idx);
         
+        % Estimate Transforms
+        
         % PCA
-
-        [~, M_hat, y_hat, V_hat, ~, ~, ~, ~] = func_pca(mod_data, pca_nbr_components_max);
+        [mean_sample, P, ~, principal_components, ~, ~, ~, ~] = func_pca(mod_data, pca_nbr_components_max, true);
         
-        V_hat_fwd = V_hat(:, 1:i);
-        V_hat_bwd = V_hat(:, i:end);
+        P_fwd = P(:, 1:i);
+        P_bwd = P(:, i:end);
         
-        mod_y_hat_fwd = y_hat(1:i, :); %V_hat_fwd' * mod_data;
-        mod_y_hat_bwd = V_hat_bwd' * ( (mod_data - mean(mod_data, 1)) - M_hat);
+        mod_pcs_fwd = principal_components(1:i, :); %P_fwd' * ( (mod_data - mean(mod_data, 1)) - mean_sample);
+        mod_pcs_bwd = P_bwd' * ( (mod_data - mean(mod_data, 1)) - mean_sample);
         
         % LDA
-
-        [q_fwd, ~, ~, ~, mean_projections_fwd] = func_lda(mod_y_hat_fwd, mod_labels);
-        [q_bwd, ~, ~, ~, mean_projections_bwd] = func_lda(mod_y_hat_bwd, mod_labels);
+        [q_fwd, mean_projections_fwd, ~, ~, ~] = func_lda(mod_pcs_fwd, mod_labels);
+        [q_bwd, mean_projections_bwd, ~, ~, ~] = func_lda(mod_pcs_bwd, mod_labels);
 
         % NN Classification
-
-        mod_classified_fwd = func_nn_classifier(q_fwd' * mod_y_hat_fwd, mean_projections_fwd, unique(mod_labels));
-        mod_classified_bwd = func_nn_classifier(q_bwd' * mod_y_hat_bwd, mean_projections_bwd, unique(mod_labels));
+        mod_classified_fwd = func_nn_classifier(q_fwd' * mod_pcs_fwd, mean_projections_fwd, unique(mod_labels));
+        mod_classified_bwd = func_nn_classifier(q_bwd' * mod_pcs_bwd, mean_projections_bwd, unique(mod_labels));
         
         mod_res_fwd = mod_classified_fwd - mod_labels;
         mod_res_bwd = mod_classified_bwd - mod_labels;
@@ -81,13 +80,14 @@ parfor i = 1:pca_nbr_components_max
         mod_fwd_error_rates(i, j) = 1 - ( sum(mod_res_fwd == 0)/length(mod_res_fwd) );
         mod_bwd_error_rates(i, j) = 1 - ( sum(mod_res_bwd == 0)/length(mod_res_bwd) );
         
+        
         % Validation Data
 
-        val_y_hat_fwd = V_hat_fwd' * ( (val_data - mean(val_data, 1)) - M_hat);
-        val_y_hat_bwd = V_hat_bwd' * ( (val_data - mean(val_data, 1)) - M_hat);
+        val_pcs_fwd = P_fwd' * ( (val_data - mean(val_data, 1)) - mean_sample);
+        val_pcs_bwd = P_bwd' * ( (val_data - mean(val_data, 1)) - mean_sample);
 
-        val_classified_fwd = func_nn_classifier(q_fwd' * val_y_hat_fwd, mean_projections_fwd, unique(val_labels));
-        val_classified_bwd = func_nn_classifier(q_bwd' * val_y_hat_bwd, mean_projections_bwd, unique(val_labels));
+        val_classified_fwd = func_nn_classifier(q_fwd' * val_pcs_fwd, mean_projections_fwd, unique(val_labels));
+        val_classified_bwd = func_nn_classifier(q_bwd' * val_pcs_bwd, mean_projections_bwd, unique(val_labels));
 
         val_res_fwd = val_classified_fwd - val_labels;
         val_res_bwd = val_classified_bwd - val_labels;

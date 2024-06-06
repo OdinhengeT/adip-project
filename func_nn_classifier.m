@@ -1,13 +1,17 @@
-function [labels] = func_nn_classifier(x_star, x_star_class_means, labels_unique)
+function [labels] = func_nn_classifier(data, data_class_means, labels_unique)
 
-    distances = zeros(size(x_star_class_means, 2), size(x_star,2));
+    % Initialize matrix containing the distances to each class mean from each sample in data
+    distances = zeros(size(data_class_means, 2), size(data,2));
     
-    for i = 1:size(x_star_class_means, 2)
-        distances(i,:) = vecnorm( (x_star - x_star_class_means(:,i)) , 2);
+    % Calculate distances to each class mean from each sample in data
+    for i = 1:size(data_class_means, 2)
+        distances(i,:) = vecnorm( (data - data_class_means(:,i)) , 2, 1);
     end
     
+    % Find indicies corresponding to the closest class mean for each sample in data 
     [~,labels] = min(distances, [], 1);
     
+    % Convert above index to appropriate label value.
     for i = 1:length(labels)
         labels(i) = labels_unique(labels(i));
     end
